@@ -563,7 +563,7 @@ function removeFile(index) {
   renderFileBadges();
 }
 
-// 3. Chat Messaging Execution
+// 3. Chat Messaging Execution (UPDATED)
 async function sendMessage(overrideModel = null) {
   const input = document.getElementById('user-input');
   const text = input.value.trim();
@@ -613,7 +613,12 @@ async function sendMessage(overrideModel = null) {
       })
     });
 
-    const data = await response.json();
+    let data;
+    try {
+      data = await response.json();
+    } catch {
+      throw new Error(`Server returned non-JSON response (status ${response.status})`);
+    }
 
     if (!response.ok) {
       // Trigger Fallback Popup on Model Failure
@@ -623,10 +628,13 @@ async function sendMessage(overrideModel = null) {
       return;
     }
 
-    aiDiv.innerText = data.result || "Execution completed.";
+    aiDiv.innerText = data.result || data.error || "Execution completed.";
   } catch (err) {
-    aiDiv.innerText = "Error establishing connection with serverless worker.";
+    // Now shows the REAL error instead of the generic message
+    aiDiv.innerText = `Error: ${err.message || "Could not reach the serverless worker."}`;
+    console.error("Chat error:", err);
   }
+
   chatContainer.scrollTop = chatContainer.scrollHeight;
 }
 
