@@ -1,27 +1,27 @@
 export async function onRequestPost(context) {
   const { request, env } = context;
 
+  const corsHeaders = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Content-Type": "application/json"
+  };
+
   try {
     if (!env.AI_GATEWAY_API_KEY) {
       return new Response(
         JSON.stringify({
-          error: "AI_GATEWAY_API_KEY is not configured."
+          error: "AI_GATEWAY_API_KEY is not configured on the Cloudflare side."
         }),
-        {
-          status: 500,
-          headers: {
-            "Content-Type": "application/json"
-          }
-        }
+        { status: 500, headers: corsHeaders }
       );
     }
 
     const body = await request.json();
 
     const prompt =
-      typeof body.prompt === "string"
-        ? body.prompt.trim()
-        : "";
+      typeof body.prompt === "string" ? body.prompt.trim() : "";
 
     const model =
       typeof body.model === "string" && body.model.trim()
@@ -30,15 +30,8 @@ export async function onRequestPost(context) {
 
     if (!prompt) {
       return new Response(
-        JSON.stringify({
-          error: "Prompt is required."
-        }),
-        {
-          status: 400,
-          headers: {
-            "Content-Type": "application/json"
-          }
-        }
+        JSON.stringify({ error: "Prompt is required." }),
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -69,13 +62,12 @@ export async function onRequestPost(context) {
         JSON.stringify({
           error:
             data?.error?.message ||
+            data?.error ||
             `AI Gateway returned HTTP ${gatewayResponse.status}`
         }),
         {
           status: gatewayResponse.status,
-          headers: {
-            "Content-Type": "application/json"
-          }
+          headers: corsHeaders
         }
       );
     }
@@ -86,12 +78,7 @@ export async function onRequestPost(context) {
 
     return new Response(
       JSON.stringify({ result }),
-      {
-        status: 200,
-        headers: {
-          "Content-Type": "application/json"
-        }
-      }
+      { status: 200, headers: corsHeaders }
     );
 
   } catch (error) {
@@ -101,12 +88,20 @@ export async function onRequestPost(context) {
           ? error.message
           : "Unknown server error"
       }),
-      {
-        status: 500,
-        headers: {
-          "Content-Type": "application/json"
-        }
-      }
+      { status: 500, headers: corsHeaders }
     );
   }
+}
+
+// Handle browser preflight (OPTIONS)
+export async function onRequestOptions() {
+  return new Response(null, {
+    status: 204,
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      "Access-Control-Max-Age": "86400"
+    }
+  });
 }
