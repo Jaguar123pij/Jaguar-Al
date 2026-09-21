@@ -1,99 +1,30 @@
 export async function onRequestPost(context) {
   const { request, env } = context;
 
-  const corsHeaders = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
-    "Content-Type": "application/json"
-  };
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  "Content-Type": "application/json"
+};
 
-  try {
-    if (!env.AI_GATEWAY_API_KEY) {
-      return new Response(
-        JSON.stringify({
-          error: "AI_GATEWAY_API_KEY is not configured on the Cloudflare side."
-        }),
-        { status: 500, headers: corsHeaders }
-      );
-    }
-
-    const body = await request.json();
-
-    const prompt =
-      typeof body.prompt === "string" ? body.prompt.trim() : "";
-
-    const model =
-      typeof body.model === "string" && body.model.trim()
-        ? body.model.trim()
-        : "inclusionai/ling-3.0-flash-fin";
-
-    if (!prompt) {
-      return new Response(
-        JSON.stringify({ error: "Prompt is required." }),
-        { status: 400, headers: corsHeaders }
-      );
-    }
-
-    const gatewayResponse = await fetch(
-      "https://ai-gateway.vercel.sh/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${env.AI_GATEWAY_API_KEY}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          model,
-          messages: [
-            {
-              role: "user",
-              content: prompt
-            }
-          ]
-        })
-      }
-    );
-
-    const data = await gatewayResponse.json();
-
-    if (!gatewayResponse.ok) {
-      return new Response(
-        JSON.stringify({
-          error:
-            data?.error?.message ||
-            data?.error ||
-            `AI Gateway returned HTTP ${gatewayResponse.status}`
-        }),
-        {
-          status: gatewayResponse.status,
-          headers: corsHeaders
-        }
-      );
-    }
-
-    const result =
-      data?.choices?.[0]?.message?.content ||
-      "No output generated.";
-
-    return new Response(
-      JSON.stringify({ result }),
-      { status: 200, headers: corsHeaders }
-    );
-
-  } catch (error) {
-    return new Response(
-      JSON.stringify({
-        error: error instanceof Error
-          ? error.message
-          : "Unknown server error"
-      }),
-      { status: 500, headers: corsHeaders }
-    );
-  }
+function json(data, status = 200) {
+  return new Response(JSON.stringify(data), { status, headers: corsHeaders });
 }
 
-// Handle browser preflight (OPTIONS)
+function getClientMeta(request) {
+  return {
+    ip: request.headers.get("CF-Connecting-IP") ||
+        request.headers.get("X-Forwarded-For")?.split(",")[0]?.trim() ||
+        "unknown",
+    country: request.headers.get("CF-IPCountry") || "unknown",
+    ua: request.headers.get("User-Agent") || "unknown",
+    ray: request.headers.get("CF-Ray") || null,
+    timestamp: new Date().toISOString()
+  };
+}
+
+// ---------- OPTIONS (preflight) ----------
 export async function onRequestOptions() {
   return new Response(null, {
     status: 204,
@@ -104,4 +35,122 @@ export async function onRequestOptions() {
       "Access-Control-Max-Age": "86400"
     }
   });
+}
+
+// ---------- POST ----------
+export async function onRequestPost(context) {
+  const { request, env } = context;
+  const url = new URL(request.url);
+
+  // ---- Access log endpoint (lightweight) ----
+  if (url.pathname.endsWith("/access-log") || url.searchParams.get("action") === "access-log") {
+    try {
+      const body = await request.json().catch(() => ({}));
+      const meta = getClientMeta(request);
+      const entry = {
+        ...meta,
+        deviceId: body.deviceId || null,
+        keyHash: body.keyHash ? String(body.keyHash).slice(0, 16) : null,
+        success: !!body.success
+      };
+      // Best-effort: if you later bind a KV namespace named ACCESS_LOG, it will store.
+      if (env.ACCESS_LOG) {
+        const key = `access:${meta.ip}:${Date.now()}`;
+        await env.ACCESS_LOG.put(key, JSON.stringify(entry), { expirationTtl: 60 * 60 * 24 * 90 }); // 90 days
+      }
+      console.log("[Jaguar Access Log]", entry);
+      return json({ ok: true, logged: true, meta: { ip: meta.ip, country: meta.country } });
+    } catch (e) {
+      return json({ ok: false, error: e.message }, 500);
+    }
+  }
+
+  // ---- Main chat endpoint ----
+  try {
+    if (!env.AI_GATEWAY_API_KEY) {
+      return json({ error: "AI_GATEWAY_API_KEY is not configured on the Cloudflare side." }, 500);
+    }
+
+    const body = await request.json();
+
+    // Support both legacy { prompt } and new { messages, model, images }
+    const model =
+      typeof body.model === "string" && body.model.trim()
+        ? body.model.trim()
+        : "inclusionai/ling-3.0-flash-fin";
+
+    let messages = [];
+
+    if (Array.isArray(body.messages) && body.messages.length > 0) {
+      // Full conversation history (preferred)
+      messages = body.messages.map((m) => {
+        if (typeof m.content === "string") {
+          return { role: m.role || "user", content: m.content };
+        }
+        // Multimodal content already prepared by frontend
+        return { role: m.role || "user", content: m.content };
+      });
+    } else {
+      // Legacy single prompt
+      const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
+      if (!prompt) {
+        return json({ error: "Prompt or messages are required." }, 400);
+      }
+      messages = [{ role: "user", content: prompt }];
+    }
+
+    // Optional system prompt for better code/architecture behaviour
+    const systemPrompt = {
+      role: "system",
+      content:
+        "You are Jaguar AI, a precise, professional assistant specialised in HTML, CSS, JavaScript, architecture, code analysis and file-assisted execution. Be clear, structured and practical. When code is requested, return complete, runnable snippets inside proper markdown fences."
+    };
+
+    // Prepend system only if not already present
+    if (!messages.some((m) => m.role === "system")) {
+      messages = [systemPrompt, ...messages];
+    }
+
+    const gatewayResponse = await fetch(
+      "https://ai-gateway.vercel.sh/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${env.AI_GATEWAY_API_KEY}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model,
+          messages,
+          stream: false
+        })
+      }
+    );
+
+    const data = await gatewayResponse.json();
+
+    if (!gatewayResponse.ok) {
+      return json(
+        {
+          error:
+            data?.error?.message ||
+            data?.error ||
+            `AI Gateway returned HTTP ${gatewayResponse.status}`
+        },
+        gatewayResponse.status
+      );
+    }
+
+    const result =
+      data?.choices?.[0]?.message?.content || "No output generated.";
+
+    return json({ result, model, usage: data.usage || null });
+  } catch (error) {
+    return json(
+      {
+        error: error instanceof Error ? error.message : "Unknown server error"
+      },
+      500
+    );
+  }
 }
