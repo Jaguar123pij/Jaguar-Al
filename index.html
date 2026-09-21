@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Jaguar AI — Private Workspace</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
@@ -23,17 +23,21 @@
   --text:#17221d;
   --muted:#68766e;
   --shadow:0 18px 50px rgba(33,70,50,.09);
+  --sidebar-w:280px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-top: env(safe-area-inset-top, 0px);
 }
 *{box-sizing:border-box;margin:0;padding:0}
-html{scroll-behavior:smooth}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
 body{
-  min-height:100vh;color:var(--text);
+  min-height:100vh;min-height:100dvh;color:var(--text);
   background:
     radial-gradient(circle at 5% 0%,rgba(32,166,106,.10),transparent 25%),
     radial-gradient(circle at 95% 0%,rgba(8,124,255,.07),transparent 22%),
     linear-gradient(180deg,#fff 0%,var(--bg) 55%,#f4f8f5 100%);
   font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-  padding:26px 18px 56px;overflow-x:hidden;
+  overflow-x:hidden;
+  padding-bottom: calc(12px + var(--safe-bottom));
 }
 body:before{
   content:"";position:fixed;inset:0;pointer-events:none;opacity:.35;
@@ -41,17 +45,144 @@ body:before{
   background-size:44px 44px;mask-image:linear-gradient(to bottom,#000,transparent 78%);
 }
 button,input,textarea,select{font:inherit}
+/* Critical: prevent iOS auto-zoom on focus */
+input, textarea, select{
+  font-size:16px !important;
+}
 button{cursor:pointer}
-.app-shell{width:min(1120px,100%);margin:auto;position:relative;z-index:1}
 
-.hero{display:grid;grid-template-columns:1.3fr .7fr;gap:16px;margin-bottom:16px}
+/* ========== LAYOUT WITH SIDEBAR ========== */
+.app-layout{
+  display:flex;
+  min-height:100vh;
+  min-height:100dvh;
+  position:relative;
+  z-index:1;
+}
+.sidebar{
+  width:var(--sidebar-w);
+  flex-shrink:0;
+  background:linear-gradient(180deg,#0a1210 0%,#0d1a16 100%);
+  color:#e8f0eb;
+  display:flex;
+  flex-direction:column;
+  border-right:1px solid rgba(32,166,106,.18);
+  transition:transform .28s ease, width .28s ease;
+  z-index:40;
+}
+.sidebar.collapsed{
+  width:0;
+  overflow:hidden;
+  border:none;
+}
+.sidebar-inner{
+  width:var(--sidebar-w);
+  display:flex;
+  flex-direction:column;
+  height:100%;
+  padding:14px 12px;
+}
+.sidebar-top{
+  display:flex;
+  gap:8px;
+  margin-bottom:14px;
+}
+.new-chat-btn{
+  flex:1;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  background:linear-gradient(135deg,var(--pink),var(--blue));
+  color:#fff;border:none;border-radius:12px;
+  padding:11px 14px;font-size:12px;font-weight:800;
+  box-shadow:0 6px 18px rgba(8,124,255,.25);
+}
+.new-chat-btn:hover{filter:brightness(1.06)}
+.sidebar-toggle-btn{
+  width:40px;height:40px;border-radius:11px;
+  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);
+  color:#c5d6cc;font-size:16px;display:flex;align-items:center;justify-content:center;
+}
+.sidebar-toggle-btn:hover{background:rgba(255,255,255,.14)}
+.chat-list{
+  flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:4px;
+  padding-right:2px;scrollbar-width:thin;scrollbar-color:#2a4a3c transparent;
+}
+.chat-item{
+  display:flex;align-items:center;gap:8px;
+  padding:10px 11px;border-radius:11px;cursor:pointer;
+  font-size:12px;color:#c5d6cc;border:1px solid transparent;
+  transition:background .15s;
+}
+.chat-item:hover{background:rgba(255,255,255,.07)}
+.chat-item.active{
+  background:rgba(32,166,106,.18);
+  border-color:rgba(32,166,106,.35);
+  color:#fff;
+}
+.chat-item-title{
+  flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  font-weight:600;
+}
+.chat-item-del{
+  opacity:0;background:transparent;border:none;color:#f87171;
+  font-size:14px;padding:2px 6px;border-radius:6px;
+}
+.chat-item:hover .chat-item-del{opacity:1}
+.chat-item-del:hover{background:rgba(248,113,113,.15)}
+.sidebar-footer{
+  padding-top:12px;border-top:1px solid rgba(255,255,255,.08);
+  font-size:10px;color:#6b8578;text-align:center;
+}
+
+.main-area{
+  flex:1;
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  padding:18px 18px 0;
+  max-width:100%;
+}
+.mobile-topbar{
+  display:none;
+  align-items:center;
+  gap:10px;
+  margin-bottom:10px;
+}
+.mobile-menu-btn{
+  width:42px;height:42px;border-radius:12px;
+  background:#fff;border:1px solid var(--line);
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;box-shadow:var(--shadow);
+}
+
+.app-shell{width:min(1120px,100%);margin:0 auto;position:relative;z-index:1;flex:1;display:flex;flex-direction:column}
+
+/* Header */
+.top-header{
+  position:relative !important;min-height:120px !important;padding:14px 18px 16px !important;
+  background:radial-gradient(circle at 15% 20%, rgba(8,124,255,.22), transparent 42%),
+             radial-gradient(circle at 85% 80%, rgba(25,55,120,.20), transparent 45%),
+             linear-gradient(135deg, #02050d 0%, #071126 48%, #02040a 100%) !important;
+  border-bottom:1px solid rgba(20,88,180,.28) !important;box-shadow:0 8px 30px rgba(0,0,0,.28) !important;
+  border-radius:18px;margin-bottom:14px;
+}
+.header-branding{width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}
+.header-jaguar-logo{width:64px;height:64px;object-fit:contain;display:block;margin:0 auto}
+.brand-stack{display:flex;align-items:center;justify-content:center}
+.product-brand{display:flex;align-items:baseline;white-space:nowrap;letter-spacing:-.035em;font-size:clamp(1.3rem,3vw,1.75rem);font-weight:900;line-height:1}
+.product-jaguar{color:#087df5}.product-ai{color:#124b36;margin-left:.2em}
+.header-right{position:absolute;right:18px;top:50%;transform:translateY(-50%);display:flex;align-items:center;gap:8px;font-size:.65rem;font-weight:800;letter-spacing:.12em}
+.ecosystem-label{color:#58756a;margin-right:8px}
+.online-dot{width:7px;height:7px;border-radius:50%;background:#79d7a9;box-shadow:0 0 0 4px rgba(121,215,169,.16)}
+.online-text{color:#287153}
+
+.hero{display:grid;grid-template-columns:1.3fr .7fr;gap:14px;margin-bottom:14px}
 .hero-card,.model-card,.chat-card,.about-card{
   background:var(--panel);border:1px solid var(--line);box-shadow:var(--shadow);
-  border-radius:23px;backdrop-filter:blur(14px)
+  border-radius:20px;backdrop-filter:blur(14px)
 }
-.hero-card{padding:29px 30px;position:relative;overflow:hidden}
+.hero-card{padding:22px 24px;position:relative;overflow:hidden}
 .hero-card:after{
-  content:"";position:absolute;width:260px;height:260px;right:-100px;top:-130px;border-radius:50%;
+  content:"";position:absolute;width:220px;height:220px;right:-90px;top:-110px;border-radius:50%;
   background:radial-gradient(circle,rgba(32,166,106,.13),transparent 66%)
 }
 .eyebrow{
@@ -59,30 +190,30 @@ button{cursor:pointer}
   letter-spacing:2px;text-transform:uppercase
 }
 .eyebrow:before{content:"";width:22px;height:2px;background:linear-gradient(90deg,var(--pink),var(--blue))}
-.hero-card h2{font-size:clamp(28px,4vw,43px);line-height:1.03;letter-spacing:-1.9px;margin:12px 0 10px;max-width:680px}
+.hero-card h2{font-size:clamp(24px,3.5vw,36px);line-height:1.05;letter-spacing:-1.6px;margin:10px 0 8px;max-width:680px}
 .gradient-text{background:linear-gradient(90deg,var(--blue),var(--pink));-webkit-background-clip:text;background-clip:text;color:transparent}
-.hero-card p{max-width:670px;color:var(--muted);font-size:13px;line-height:1.75}
-.hero-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}
-.tag{padding:7px 10px;border:1px solid #dce8e1;border-radius:999px;background:#f5faf7;color:#53635a;font-size:10px;font-weight:800}
-.model-card{padding:22px;display:flex;flex-direction:column;justify-content:space-between;background:linear-gradient(145deg,#fff,#f2faf5)}
-.model-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.hero-card p{max-width:670px;color:var(--muted);font-size:13px;line-height:1.7}
+.hero-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.tag{padding:6px 9px;border:1px solid #dce8e1;border-radius:999px;background:#f5faf7;color:#53635a;font-size:10px;font-weight:800}
+.model-card{padding:18px;display:flex;flex-direction:column;justify-content:space-between;background:linear-gradient(145deg,#fff,#f2faf5)}
+.model-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
 .model-label{font-size:10px;letter-spacing:1.7px;text-transform:uppercase;color:var(--muted);font-weight:900}
 .model-badge{font-size:9px;color:var(--green-dark);padding:5px 8px;border:1px solid #cde7d8;border-radius:999px;background:var(--green-soft);font-weight:900}
-.model-card label{font-size:11px;color:#697970;margin-bottom:7px;display:block}
+.model-card label{font-size:11px;color:#697970;margin-bottom:6px;display:block}
 select{
   width:100%;appearance:none;outline:none;color:#26342d;background:#fff;
-  border:1px solid #cbdcd2;border-radius:13px;padding:12px 36px 12px 13px;font-size:12px;
+  border:1px solid #cbdcd2;border-radius:12px;padding:11px 34px 11px 12px;font-size:12px;
   box-shadow:0 4px 15px rgba(33,70,50,.04);
   background-image:linear-gradient(45deg,transparent 50%,#718078 50%),linear-gradient(135deg,#718078 50%,transparent 50%);
-  background-position:calc(100% - 17px) 16px,calc(100% - 12px) 16px;background-size:5px 5px;background-repeat:no-repeat;
+  background-position:calc(100% - 16px) 15px,calc(100% - 11px) 15px;background-size:5px 5px;background-repeat:no-repeat;
 }
-.workspace-head{display:flex;align-items:center;justify-content:space-between;padding:0 4px 10px}
+.workspace-head{display:flex;align-items:center;justify-content:space-between;padding:0 4px 8px}
 .workspace-head h3{font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:#28372f}
 .workspace-head span{font-size:10px;color:#819087}
 
-.chat-card{padding:10px;background:rgba(255,255,255,.92);position:relative}
+.chat-card{padding:10px;background:rgba(255,255,255,.92);position:relative;flex:1;display:flex;flex-direction:column;min-height:0}
 .chat-toolbar{
-  display:flex;justify-content:flex-end;padding:6px 10px 0;gap:8px;
+  display:flex;justify-content:flex-end;padding:4px 8px 0;gap:8px;
 }
 .chat-toolbar button{
   background:#f1f7f3;border:1px solid #dce7e1;border-radius:8px;
@@ -91,35 +222,38 @@ select{
 .chat-toolbar button:hover{background:var(--green-soft);border-color:#b7d5c5}
 
 #chat-container{
-  height:520px;overflow-y:auto;display:flex;flex-direction:column;gap:13px;padding:20px;
-  border-radius:17px;background:linear-gradient(180deg,#fbfdfc,#f3f8f5);
+  flex:1;min-height:380px;max-height:58vh;overflow-y:auto;display:flex;flex-direction:column;gap:12px;padding:16px;
+  border-radius:16px;background:linear-gradient(180deg,#fbfdfc,#f3f8f5);
   border:1px solid #e1ebe5;scrollbar-width:thin;scrollbar-color:#b9c9bf transparent
 }
 .message{
-  max-width:min(82%,760px);padding:13px 16px;border-radius:17px;font-size:13px;line-height:1.7;
+  max-width:min(82%,760px);padding:12px 15px;border-radius:16px;font-size:13px;line-height:1.65;
   white-space:pre-wrap;word-wrap:break-word;animation:messageIn .22s ease-out;position:relative;
 }
 @keyframes messageIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
 .user{
   align-self:flex-end;background:linear-gradient(135deg,var(--blue),var(--blue-2));
   color:#fff;border:1px solid rgba(0,65,160,.16);border-bottom-right-radius:5px;
-  box-shadow:0 9px 24px rgba(8,124,255,.16)
+  box-shadow:0 9px 24px rgba(8,124,255,.16);cursor:pointer;
 }
 .ai{
   align-self:flex-start;background:#fff;border:1px solid #dfe9e3;border-left:3px solid var(--green);
   color:#25342c;border-bottom-left-radius:5px;box-shadow:0 7px 20px rgba(33,70,50,.045)
 }
 
-/* Edit button on user messages */
-.edit-btn{
-  position:absolute;top:6px;right:8px;background:rgba(255,255,255,.25);
-  border:none;color:#fff;font-size:10px;padding:2px 7px;border-radius:6px;
-  opacity:0;transition:opacity .15s;cursor:pointer;
+/* Message action popup (Edit / Copy) */
+.msg-actions{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  display:none;gap:6px;background:rgba(15,23,42,.92);padding:6px 8px;border-radius:10px;
+  box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:5;
 }
-.user:hover .edit-btn{opacity:1}
-.edit-btn:hover{background:rgba(255,255,255,.4)}
+.msg-actions.show{display:flex}
+.msg-actions button{
+  background:#334155;border:none;color:#f1f5f9;font-size:11px;font-weight:700;
+  padding:5px 10px;border-radius:7px;cursor:pointer;
+}
+.msg-actions button:hover{background:#475569}
 
-/* Thinking indicator */
 .thinking-status{
   font-size:12px;color:var(--muted);display:flex;align-items:center;gap:8px;
 }
@@ -129,7 +263,6 @@ select{
 }
 @keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}
 
-/* Code blocks */
 .code-block{
   background:#0f172a;border-radius:10px;margin:10px 0;overflow:hidden;
   border:1px solid #1e293b;
@@ -150,9 +283,9 @@ select{
   font-size:12px;line-height:1.5;color:#e2e8f0;white-space:pre;
 }
 
-.input-bar{margin-top:12px}
+.input-bar{margin-top:10px;padding-bottom:calc(8px + var(--safe-bottom))}
 .composer{
-  background:#fff;border:1px solid var(--line);border-radius:20px;padding:10px;
+  background:#fff;border:1px solid var(--line);border-radius:18px;padding:10px;
   box-shadow:var(--shadow)
 }
 #file-preview-bar{display:flex;gap:7px;flex-wrap:wrap;padding:2px 4px 8px}
@@ -163,182 +296,222 @@ select{
 .file-badge span{color:var(--pink);cursor:pointer;font-weight:900;padding-left:3px}
 .input-wrapper{display:grid;grid-template-columns:auto 1fr auto;gap:9px;align-items:stretch}
 .file-btn-label{
-  min-width:92px;display:flex;align-items:center;justify-content:center;gap:6px;padding:0 14px;
-  border:1px solid #dce7e1;border-radius:13px;background:#f7faf8;color:#53635a;
+  min-width:88px;display:flex;align-items:center;justify-content:center;gap:6px;padding:0 12px;
+  border:1px solid #dce7e1;border-radius:12px;background:#f7faf8;color:#53635a;
   font-size:11px;font-weight:900;cursor:pointer;transition:.18s
 }
 .file-btn-label:hover{border-color:#b7d5c5;background:var(--green-soft)}
 .input-bar textarea{
-  width:100%;height:50px;resize:none;outline:none;border:1px solid #dce7e1;border-radius:13px;
-  background:#fbfdfc;color:#17221d;padding:14px;font-size:12px;line-height:1.4
+  width:100%;height:50px;resize:none;outline:none;border:1px solid #dce7e1;border-radius:12px;
+  background:#fbfdfc;color:#17221d;padding:13px;font-size:16px;line-height:1.4
 }
 .input-bar textarea:focus{border-color:#9dcdb3;box-shadow:0 0 0 3px rgba(32,166,106,.08)}
 .send-btn{
-  min-width:108px;border:0;border-radius:13px;color:#fff;font-weight:900;font-size:11px;
+  min-width:108px;border:0;border-radius:12px;color:#fff;font-weight:900;font-size:11px;
   background:linear-gradient(135deg,var(--pink),var(--blue));box-shadow:0 9px 23px rgba(8,124,255,.13);
   transition:transform .18s,filter .18s
 }
 .send-btn:hover{transform:translateY(-1px);filter:brightness(1.05)}
+.send-btn:disabled{opacity:.55;cursor:not-allowed;transform:none}
+.send-btn.stop-mode{
+  background:linear-gradient(135deg,#ef4444,#b91c1c);
+  box-shadow:0 9px 23px rgba(239,68,68,.2);
+}
 #file-input{display:none}
 
-.about-card{margin-top:16px;padding:26px}
+.about-card{margin-top:14px;padding:22px;margin-bottom:20px}
 .about-head{display:flex;justify-content:space-between;align-items:flex-start;gap:20px}
-.about-head h2{font-size:20px;letter-spacing:-.5px;color:#1c2a23}
-.about-head p{max-width:700px;color:var(--muted);font-size:12px;line-height:1.75;margin-top:7px}
+.about-head h2{font-size:18px;letter-spacing:-.5px;color:#1c2a23}
+.about-head p{max-width:700px;color:var(--muted);font-size:12px;line-height:1.7;margin-top:6px}
 .about-badge{
   white-space:nowrap;color:var(--green-dark);font-size:9px;font-weight:900;letter-spacing:1.5px;
   text-transform:uppercase;padding:8px 10px;border-radius:999px;border:1px solid #cde5d6;background:#f0f9f4
 }
-.embedded-img-container{display:flex !important;flex-direction:column !important;align-items:center !important;gap:20px !important;margin-top:16px !important}
-.flywheel-img{width:100%;max-height:340px}
-.founder-img{width:150px;height:150px;margin:auto !important;object-fit:cover;border-radius:24px;border:2px solid transparent;background:linear-gradient(#fff,#fff) padding-box,linear-gradient(135deg,var(--pink),var(--blue)) border-box}
-.hero-founder-block{display:flex;flex-direction:column;align-items:center;justify-content:center;margin-top:22px}
-.hero-founder-block .intelligence-mark{margin-bottom:13px}
+.embedded-img-container{display:flex !important;flex-direction:column !important;align-items:center !important;gap:16px !important;margin-top:14px !important}
+.flywheel-img{width:100%;max-height:300px}
+.founder-img{width:130px;height:130px;margin:auto !important;object-fit:cover;border-radius:20px;border:2px solid transparent;background:linear-gradient(#fff,#fff) padding-box,linear-gradient(135deg,var(--pink),var(--blue)) border-box}
+.hero-founder-block{display:flex;flex-direction:column;align-items:center;justify-content:center;margin-top:16px}
+.hero-founder-block .intelligence-mark{margin-bottom:10px}
 .intelligence-mark{color:#7a8a82;font-size:9px;font-weight:900;letter-spacing:2px;text-transform:uppercase}
 .intelligence-mark span{color:#20a66a;margin:0 5px}
 footer{display:none !important}
 
-/* Header */
-.top-header{
-  position:relative !important;min-height:140px !important;padding:16px 22px 18px !important;
-  background:radial-gradient(circle at 15% 20%, rgba(8,124,255,.22), transparent 42%),
-             radial-gradient(circle at 85% 80%, rgba(25,55,120,.20), transparent 45%),
-             linear-gradient(135deg, #02050d 0%, #071126 48%, #02040a 100%) !important;
-  border-bottom:1px solid rgba(20,88,180,.28) !important;box-shadow:0 8px 30px rgba(0,0,0,.28) !important;
-}
-.header-branding{width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px}
-.header-jaguar-logo{width:76px;height:76px;object-fit:contain;display:block;margin:0 auto}
-.brand-stack{display:flex;align-items:center;justify-content:center}
-.product-brand{display:flex;align-items:baseline;white-space:nowrap;letter-spacing:-.035em;font-size:clamp(1.4rem,3vw,1.9rem);font-weight:900;line-height:1}
-.product-jaguar{color:#087df5}.product-ai{color:#124b36;margin-left:.2em}
-.header-right{position:absolute;right:22px;top:50%;transform:translateY(-50%);display:flex;align-items:center;gap:8px;font-size:.68rem;font-weight:800;letter-spacing:.12em}
-.ecosystem-label{color:#58756a;margin-right:8px}
-.online-dot{width:7px;height:7px;border-radius:50%;background:#79d7a9;box-shadow:0 0 0 4px rgba(121,215,169,.16)}
-.online-text{color:#287153}
-
-#access-modal,#fallback-modal{
+/* Modals */
+#access-modal,#fallback-modal,#sidebar-overlay{
   position:fixed;inset:0;background:rgba(245,250,247,.84);display:flex;justify-content:center;align-items:center;
   z-index:1000;backdrop-filter:blur(14px);padding:20px
 }
-#fallback-modal{display:none}
+#fallback-modal,#sidebar-overlay{display:none}
+#sidebar-overlay{background:rgba(0,0,0,.45);z-index:35}
 .modal-box{
-  width:min(430px,100%);padding:30px;border-radius:24px;text-align:center;background:#fff;
+  width:min(430px,100%);padding:28px;border-radius:22px;text-align:center;background:#fff;
   border:1px solid #dce8e1;box-shadow:0 30px 80px rgba(33,70,50,.18)
 }
-.modal-box h3{font-size:19px;margin-bottom:8px}
+.modal-box h3{font-size:18px;margin-bottom:8px}
 .modal-box p{font-size:12px!important;line-height:1.6}
 .modal-box input{
-  width:100%;padding:13px 14px;margin:17px 0 10px;border-radius:12px;border:1px solid #d6e3db;
-  background:#f9fcfa;color:#17221d;font-size:12px;outline:none
+  width:100%;padding:13px 14px;margin:16px 0 10px;border-radius:12px;border:1px solid #d6e3db;
+  background:#f9fcfa;color:#17221d;font-size:16px;outline:none
 }
 .modal-box input:focus{border-color:#99cdb0;box-shadow:0 0 0 3px rgba(32,166,106,.08)}
 .modal-box button{
   width:100%;padding:13px 18px;border:0;border-radius:12px;background:linear-gradient(90deg,var(--pink),var(--blue));
-  color:#fff;font-weight:900;font-size:11px
+  color:#fff;font-weight:900;font-size:12px
 }
 #error-msg{color:var(--pink)!important;font-size:11px!important;margin-top:10px;display:none;font-weight:900}
 .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite;margin-right:7px;vertical-align:-2px}
 @keyframes spin{to{transform:rotate(360deg)}}
 
-@media(max-width:760px){
-  body{padding:15px 12px 40px}
-  .hero{grid-template-columns:1fr}.hero-card{padding:22px}.model-card{padding:18px}
-  #chat-container{height:58vh;min-height:400px;padding:14px}.message{max-width:92%;font-size:12px}
-  .input-wrapper{grid-template-columns:1fr 1fr}.input-bar textarea{grid-column:1/-1;grid-row:1;height:78px}
-  .file-btn-label{height:46px}.send-btn{height:46px}
+/* Mobile */
+@media(max-width:860px){
+  .sidebar{
+    position:fixed;left:0;top:0;bottom:0;height:100%;
+    transform:translateX(-100%);
+    width:var(--sidebar-w) !important;
+  }
+  .sidebar.open{transform:translateX(0)}
+  .sidebar.collapsed{transform:translateX(-100%);width:var(--sidebar-w)!important}
+  .mobile-topbar{display:flex}
+  .main-area{padding:12px 12px 0}
+  .hero{grid-template-columns:1fr}
+  .hero-card{padding:18px}
+  .model-card{padding:16px}
+  #chat-container{max-height:48vh;min-height:320px;padding:12px}
+  .message{max-width:92%;font-size:13px}
+  .input-wrapper{grid-template-columns:1fr 1fr}
+  .input-bar textarea{grid-column:1/-1;grid-row:1;height:72px;font-size:16px}
+  .file-btn-label,.send-btn{height:46px}
+  .header-jaguar-logo{width:56px;height:56px}
+  .header-right{position:static;transform:none;margin-top:4px}
+  .ecosystem-label{display:none}
   .about-head{flex-direction:column}
-  .header-jaguar-logo{width:64px;height:64px}
-  .header-branding .header-right{position:static;transform:none;margin:0}
-  .header-branding .ecosystem-label{display:none}
 }
 </style>
 </head>
 <body>
 
-<div class="app-shell">
-  <header class="top-header">
-    <div class="header-branding">
-      <img src="jaguarlogo.png" alt="Jaguar logo" class="header-jaguar-logo">
-      <div class="brand-stack" aria-label="Jaguar AI">
-        <div class="product-brand">
-          <span class="product-jaguar">Jaguar</span>
-          <span class="product-ai">AI</span>
+<div class="app-layout">
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-inner">
+      <div class="sidebar-top">
+        <button class="new-chat-btn" onclick="createNewChat()">＋ New Chat</button>
+        <button class="sidebar-toggle-btn" onclick="toggleSidebar()" title="Collapse">‹</button>
+      </div>
+      <div class="chat-list" id="chat-list"></div>
+      <div class="sidebar-footer">Jaguar AI · Private · Local history</div>
+    </div>
+  </aside>
+  <div id="sidebar-overlay" onclick="closeSidebarMobile()"></div>
+
+  <div class="main-area">
+    <div class="mobile-topbar">
+      <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
+      <strong style="font-size:13px;color:#1c2a23" id="mobile-chat-title">New Chat</strong>
+    </div>
+
+    <div class="app-shell">
+      <header class="top-header">
+        <div class="header-branding">
+          <img src="jaguarlogo.png" alt="Jaguar logo" class="header-jaguar-logo" onerror="this.style.display='none'">
+          <div class="brand-stack" aria-label="Jaguar AI">
+            <div class="product-brand">
+              <span class="product-jaguar">Jaguar</span>
+              <span class="product-ai">AI</span>
+            </div>
+          </div>
+          <div class="header-right">
+            <span class="ecosystem-label">ECOSYSTEM INTELLIGENCE</span>
+            <span class="online-dot"></span>
+            <span class="online-text">ONLINE</span>
+          </div>
+        </div>
+      </header>
+
+      <section class="hero">
+        <div class="hero-card">
+          <span class="eyebrow">Private AI Workspace</span>
+          <h2>Build faster. <span class="gradient-text">Think bigger.</span></h2>
+          <p>Jaguar AI is your focused workspace for HTML, CSS, JavaScript, architecture, code analysis and file-assisted execution.</p>
+          <div class="hero-meta">
+            <span class="tag">HTML / CSS</span><span class="tag">JavaScript</span><span class="tag">Architecture</span><span class="tag">File Analysis</span>
+          </div>
+          <div class="hero-founder-block">
+            <div class="intelligence-mark">JAGUAR AI <span>•</span> PRIVATE WORKSPACE</div>
+            <img src="founder.png" alt="Founder - Jaguar Group" class="founder-img hero-founder-img" onerror="this.style.display='none'">
+          </div>
+        </div>
+        <div class="model-card">
+          <div>
+            <div class="model-top"><span class="model-label">Engine Control</span><span class="model-badge">FREE ROUTE</span></div>
+            <label for="model-select">Active model</label>
+            <select id="model-select">
+              <optgroup label="—— Free ——">
+                <option value="inclusionai/ling-3.0-flash-fin">InclusionAI Ling 3.0 Flash Fin (Code/Logic)</option>
+                <option value="inclusionai/ling-3.0-flash-vl">InclusionAI Ling 3.0 Flash VL (Vision/Images)</option>
+                <option value="inclusionai/ling-3.0-flash-sante">InclusionAI Ling 3.0 Flash Santé</option>
+                <option value="inclusionai/ling-3.0-tiny-free">InclusionAI Ling 3.0 Tiny (Fast Text)</option>
+                <option value="typesafe-ai/jev">TypeSafe AI Jev (Free)</option>
+              </optgroup>
+              <optgroup label="—— Cheap / High Value ——">
+                <option value="inference-net/schematron-v2-turbo">Inference-Net Schematron v2 Turbo ($0.03)</option>
+                <option value="inference-net/schematron-v2-small">Inference-Net Schematron v2 Small ($0.05)</option>
+                <option value="nvidia/nemotron-3.5-lightning">NVIDIA Nemotron 3.5 Lightning ($0.05)</option>
+                <option value="zai/glm-4.7-flash">Z.AI GLM-4.7 Flash ($0.07)</option>
+                <option value="tencent/hy-mt2-pro">Tencent HY-MT2 Pro ($0.07)</option>
+                <option value="stepfun/step-3.5-flash">StepFun Step 3.5 Flash ($0.09)</option>
+                <option value="tencent/hy3">Tencent HY3 ($0.11)</option>
+                <option value="alibaba/qwen-3-14b">Alibaba Qwen3-14B ($0.12)</option>
+                <option value="alibaba/qwen-3-30b">Alibaba Qwen3-30B ($0.12)</option>
+                <option value="google/gemma-4-26b-a4b-it">Google Gemma 4 26B A4B IT (~$0.13)</option>
+                <option value="spacexai/grok-4.1-fast-reasoning">SpaceXAI Grok 4.1 Fast Reasoning (~$0.20)</option>
+              </optgroup>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <div class="workspace-head">
+        <h3>Command workspace</h3>
+        <span id="current-chat-label">Encrypted-looking UI • Local file staging</span>
+      </div>
+
+      <section class="chat-card">
+        <div class="chat-toolbar">
+          <button onclick="clearCurrentChat()">🗑 Clear Chat</button>
+        </div>
+        <div id="chat-container">
+          <div class="message ai">Welcome Admin. Jaguar AI is active and ready for HTML, CSS, JavaScript, and architecture execution.</div>
+        </div>
+      </section>
+
+      <div class="input-bar">
+        <div class="composer">
+          <div id="file-preview-bar"></div>
+          <div class="input-wrapper">
+            <label for="file-input" class="file-btn-label">📎 Attach</label>
+            <input type="file" id="file-input" multiple accept="image/*,.txt,.js,.html,.css,.json,.md,.zip,.py,.ts" onchange="handleFileUpload(event)">
+            <textarea id="user-input" placeholder="Ask Jaguar AI, submit a build request, or attach files..." rows="1"></textarea>
+            <button class="send-btn" id="send-btn" onclick="onSendClick()">Run Request</button>
+          </div>
         </div>
       </div>
-      <div class="header-right">
-        <span class="ecosystem-label">ECOSYSTEM INTELLIGENCE</span>
-        <span class="online-dot"></span>
-        <span class="online-text">ONLINE</span>
-      </div>
-    </div>
-  </header>
 
-  <section class="hero">
-    <div class="hero-card">
-      <span class="eyebrow">Private AI Workspace</span>
-      <h2>Build faster. <span class="gradient-text">Think bigger.</span></h2>
-      <p>Jaguar AI is your focused workspace for HTML, CSS, JavaScript, architecture, code analysis and file-assisted execution.</p>
-      <div class="hero-meta">
-        <span class="tag">HTML / CSS</span><span class="tag">JavaScript</span><span class="tag">Architecture</span><span class="tag">File Analysis</span>
-      </div>
-      <div class="hero-founder-block">
-        <div class="intelligence-mark">JAGUAR AI <span>•</span> PRIVATE WORKSPACE</div>
-        <img src="founder.png" alt="Founder - Jaguar Group" class="founder-img hero-founder-img">
-      </div>
-    </div>
-    <div class="model-card">
-      <div>
-        <div class="model-top"><span class="model-label">Engine Control</span><span class="model-badge">FREE ROUTE</span></div>
-        <label for="model-select">Active model</label>
-        <select id="model-select">
-          <option value="inclusionai/ling-3.0-flash-fin">InclusionAI Ling 3.0 Flash Fin (Code/Logic)</option>
-          <option value="inclusionai/ling-3.0-flash-vl">InclusionAI Ling 3.0 Flash VL (Vision/Images)</option>
-          <option value="inclusionai/ling-3.0-tiny-free">InclusionAI Ling 3.0 Tiny (Fast Text)</option>
-          <option value="typesafe-ai/jev">TypeSafe AI Jev (Free)</option>
-        </select>
-      </div>
-    </div>
-  </section>
-
-  <div class="workspace-head">
-    <h3>Command workspace</h3>
-    <span>Encrypted-looking UI • Local file staging</span>
-  </div>
-
-  <section class="chat-card">
-    <div class="chat-toolbar">
-      <button onclick="clearChat()">🗑 Clear Chat</button>
-    </div>
-    <div id="chat-container">
-      <div class="message ai">Welcome Admin. Jaguar AI is active and ready for HTML, CSS, JavaScript, and architecture execution.</div>
-    </div>
-  </section>
-
-  <div class="input-bar">
-    <div class="composer">
-      <div id="file-preview-bar"></div>
-      <div class="input-wrapper">
-        <label for="file-input" class="file-btn-label">📎 Attach</label>
-        <input type="file" id="file-input" multiple onchange="handleFileUpload(event)">
-        <textarea id="user-input" placeholder="Ask Jaguar AI, submit a build request, or attach files..."></textarea>
-        <button class="send-btn" onclick="sendMessage()">Run Request</button>
-      </div>
+      <section id="about-jaguar" class="about-card">
+        <div class="about-head">
+          <div>
+            <span class="eyebrow">The ecosystem</span>
+            <h2>About Jaguar Group & AI</h2>
+            <p>Jaguar Group is an ecosystem spanning technology, music production, clothing, luxury automotive sales, and real estate — with AI and edge-computing architecture supporting the wider vision.</p>
+          </div>
+          <span class="about-badge">Jaguar Intelligence</span>
+        </div>
+        <div class="embedded-img-container">
+          <img src="jaguargroup_flywheel.png" alt="Jaguar Group Flywheel Ecosystem" class="flywheel-img" onerror="this.style.display='none'">
+        </div>
+      </section>
     </div>
   </div>
-
-  <section id="about-jaguar" class="about-card">
-    <div class="about-head">
-      <div>
-        <span class="eyebrow">The ecosystem</span>
-        <h2>About Jaguar Group & AI</h2>
-        <p>Jaguar Group is an ecosystem spanning technology, music production, clothing, luxury automotive sales, and real estate — with AI and edge-computing architecture supporting the wider vision.</p>
-      </div>
-      <span class="about-badge">Jaguar Intelligence</span>
-    </div>
-    <div class="embedded-img-container">
-      <img src="jaguargroup_flywheel.png" alt="Jaguar Group Flywheel Ecosystem" class="flywheel-img">
-    </div>
-  </section>
 </div>
 
 <!-- Admin Access Gate -->
@@ -367,16 +540,46 @@ footer{display:none !important}
 </div>
 
 <script>
+/* =========================================================
+   Jaguar AI — Client (local history + multi-chat + vision)
+   ========================================================= */
+
 const REQUIRED_KEY = "jaguar_2h970eafX0f0PCjeoUfyb7CYWd73Empx6IYq6mUZDg0BYFkXlR07qjgG";
+const STORAGE_KEY = "jaguar_chats_v1";
+const ACCESS_FLAG = "jaguar_access_ok";
+const DEVICE_ID_KEY = "jaguar_device_id";
+
 let stagedFiles = [];
 let pendingRequest = null;
 let thinkingInterval = null;
+let currentAbort = null;
+let isProcessing = false;
 
-// ==================== ACCESS GATE ====================
-function verifyAccess() {
-  const input = document.getElementById('access-key-input');
-  const btn = document.getElementById('unlock-btn');
-  const errorMsg = document.getElementById('error-msg');
+// In-memory chat state
+let chats = [];          // [{id, title, messages:[], created, updated}]
+let activeChatId = null;
+
+// ---------- Device ID ----------
+function getDeviceId() {
+  let id = localStorage.getItem(DEVICE_ID_KEY);
+  if (!id) {
+    id = "dev_" + Math.random().toString(36).slice(2) + Date.now().toString(36);
+    localStorage.setItem(DEVICE_ID_KEY, id);
+  }
+  return id;
+}
+
+// ---------- Access Gate ----------
+function checkAccessOnLoad() {
+  if (localStorage.getItem(ACCESS_FLAG) === "1") {
+    document.getElementById("access-modal").style.display = "none";
+  }
+}
+
+async function verifyAccess() {
+  const input = document.getElementById("access-key-input");
+  const btn = document.getElementById("unlock-btn");
+  const errorMsg = document.getElementById("error-msg");
   const enteredKey = input.value.trim();
 
   if (!enteredKey) {
@@ -390,58 +593,256 @@ function verifyAccess() {
   btn.innerHTML = '<span class="spinner"></span> Verifying Access...';
   errorMsg.style.display = "none";
 
-  setTimeout(() => {
-    if (enteredKey === REQUIRED_KEY) {
-      document.getElementById('access-modal').style.display = 'none';
-    } else {
-      btn.disabled = false;
-      input.disabled = false;
-      btn.innerHTML = 'Unlock Workspace';
-      errorMsg.innerText = 'Access Denied: Invalid Key';
-      errorMsg.style.display = 'block';
-    }
-  }, 2500);
+  // Simulate slight delay for polish
+  await new Promise(r => setTimeout(r, 1200));
+
+  if (enteredKey === REQUIRED_KEY) {
+    localStorage.setItem(ACCESS_FLAG, "1");
+    document.getElementById("access-modal").style.display = "none";
+
+    // Server-side IP / device log (best-effort)
+    try {
+      await fetch("/api/chat?action=access-log", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          success: true,
+          deviceId: getDeviceId(),
+          keyHash: btoa(enteredKey).slice(0, 12)
+        })
+      });
+    } catch (_) {}
+  } else {
+    btn.disabled = false;
+    input.disabled = false;
+    btn.innerHTML = "Unlock Workspace";
+    errorMsg.innerText = "Access Denied: Invalid Key";
+    errorMsg.style.display = "block";
+  }
 }
 
-// ==================== FILE HANDLING ====================
+// ---------- Sidebar ----------
+function toggleSidebar() {
+  const sb = document.getElementById("sidebar");
+  const overlay = document.getElementById("sidebar-overlay");
+  if (window.innerWidth <= 860) {
+    sb.classList.toggle("open");
+    overlay.style.display = sb.classList.contains("open") ? "block" : "none";
+  } else {
+    sb.classList.toggle("collapsed");
+  }
+}
+function closeSidebarMobile() {
+  document.getElementById("sidebar").classList.remove("open");
+  document.getElementById("sidebar-overlay").style.display = "none";
+}
+
+// ---------- Chat Persistence ----------
+function loadChats() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    chats = raw ? JSON.parse(raw) : [];
+  } catch {
+    chats = [];
+  }
+  if (chats.length === 0) {
+    createNewChat(true);
+  } else {
+    activeChatId = chats[0].id;
+    renderChatList();
+    renderActiveChat();
+  }
+}
+
+function saveChats() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(chats));
+  } catch (e) {
+    console.warn("Storage full or unavailable", e);
+  }
+}
+
+function createNewChat(silent = false) {
+  const id = "c_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  const chat = {
+    id,
+    title: "New Chat",
+    messages: [],
+    created: Date.now(),
+    updated: Date.now()
+  };
+  chats.unshift(chat);
+  activeChatId = id;
+  saveChats();
+  renderChatList();
+  renderActiveChat();
+  if (!silent) closeSidebarMobile();
+}
+
+function deleteChat(id, ev) {
+  if (ev) ev.stopPropagation();
+  if (!confirm("Delete this conversation?")) return;
+  chats = chats.filter(c => c.id !== id);
+  if (activeChatId === id) {
+    if (chats.length === 0) createNewChat(true);
+    else activeChatId = chats[0].id;
+  }
+  saveChats();
+  renderChatList();
+  renderActiveChat();
+}
+
+function switchChat(id) {
+  activeChatId = id;
+  renderChatList();
+  renderActiveChat();
+  closeSidebarMobile();
+}
+
+function getActiveChat() {
+  return chats.find(c => c.id === activeChatId);
+}
+
+function renderChatList() {
+  const list = document.getElementById("chat-list");
+  list.innerHTML = "";
+  chats.forEach(c => {
+    const div = document.createElement("div");
+    div.className = "chat-item" + (c.id === activeChatId ? " active" : "");
+    div.onclick = () => switchChat(c.id);
+    div.innerHTML = `
+      <span class="chat-item-title">${escapeHtml(c.title || "New Chat")}</span>
+      <button class="chat-item-del" title="Delete" onclick="deleteChat('${c.id}', event)">×</button>
+    `;
+    list.appendChild(div);
+  });
+  const mobileTitle = document.getElementById("mobile-chat-title");
+  const active = getActiveChat();
+  if (mobileTitle) mobileTitle.textContent = active ? (active.title || "New Chat") : "New Chat";
+  const label = document.getElementById("current-chat-label");
+  if (label && active) label.textContent = active.title || "New conversation";
+}
+
+function renderActiveChat() {
+  const container = document.getElementById("chat-container");
+  const chat = getActiveChat();
+  container.innerHTML = "";
+  if (!chat || chat.messages.length === 0) {
+    container.innerHTML = `<div class="message ai">Welcome Admin. Jaguar AI is active and ready for HTML, CSS, JavaScript, and architecture execution.</div>`;
+    return;
+  }
+  chat.messages.forEach((m, idx) => {
+    const div = document.createElement("div");
+    div.className = "message " + (m.role === "user" ? "user" : "ai");
+    if (m.role === "user") {
+      div.dataset.rawText = m.content || "";
+      div.dataset.msgIndex = idx;
+      div.onclick = (e) => showMsgActions(e, div);
+      let html = escapeHtml(m.content || "");
+      if (m.attachments && m.attachments.length) {
+        html += `\n\n[Attached: ${m.attachments.map(a => a.name).join(", ")}]`;
+      }
+      div.innerHTML = html + `<div class="msg-actions"><button onclick="editFromMsg(event, this)">Edit</button><button onclick="copyFromMsg(event, this)">Copy</button></div>`;
+    } else {
+      div.innerHTML = renderMarkdownWithCode(m.content || "");
+    }
+    container.appendChild(div);
+  });
+  container.scrollTop = container.scrollHeight;
+}
+
+function clearCurrentChat() {
+  if (!confirm("Clear the entire conversation?")) return;
+  const chat = getActiveChat();
+  if (!chat) return;
+  chat.messages = [];
+  chat.title = "New Chat";
+  chat.updated = Date.now();
+  saveChats();
+  renderChatList();
+  renderActiveChat();
+  stagedFiles = [];
+  renderFileBadges();
+  document.getElementById("user-input").value = "";
+}
+
+// ---------- Auto title ----------
+function autoTitleFromText(text) {
+  const clean = (text || "").replace(/\s+/g, " ").trim();
+  if (!clean) return "New Chat";
+  return clean.length > 42 ? clean.slice(0, 42) + "…" : clean;
+}
+
+// ---------- Message actions (Edit / Copy) ----------
+function showMsgActions(e, div) {
+  e.stopPropagation();
+  document.querySelectorAll(".msg-actions.show").forEach(el => el.classList.remove("show"));
+  const actions = div.querySelector(".msg-actions");
+  if (actions) actions.classList.add("show");
+}
+document.addEventListener("click", () => {
+  document.querySelectorAll(".msg-actions.show").forEach(el => el.classList.remove("show"));
+});
+
+function editFromMsg(e, btn) {
+  e.stopPropagation();
+  const userDiv = btn.closest(".message.user");
+  const text = userDiv.dataset.rawText || "";
+  document.getElementById("user-input").value = text;
+  document.getElementById("user-input").focus();
+  userDiv.querySelector(".msg-actions")?.classList.remove("show");
+}
+
+function copyFromMsg(e, btn) {
+  e.stopPropagation();
+  const userDiv = btn.closest(".message.user");
+  const text = userDiv.dataset.rawText || "";
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = "Copied!";
+    setTimeout(() => (btn.textContent = "Copy"), 1200);
+  });
+}
+
+// ---------- Files ----------
 async function handleFileUpload(event) {
   const files = Array.from(event.target.files);
   for (let file of files) {
-    if (file.name.endsWith('.zip')) {
+    if (file.name.endsWith(".zip")) {
       const zip = await JSZip.loadAsync(file);
-      zip.forEach(async (relativePath, zipEntry) => {
+      for (const [relativePath, zipEntry] of Object.entries(zip.files)) {
         if (!zipEntry.dir) {
           const content = await zipEntry.async("string");
-          stagedFiles.push({ name: relativePath, content, type: 'text' });
-          renderFileBadges();
+          stagedFiles.push({ name: relativePath, content, type: "text" });
         }
-      });
-    } else if (file.type.startsWith('image/')) {
+      }
+      renderFileBadges();
+    } else if (file.type.startsWith("image/")) {
       const reader = new FileReader();
       reader.onload = (e) => {
-        stagedFiles.push({ name: file.name, content: e.target.result, type: 'image' });
+        stagedFiles.push({ name: file.name, content: e.target.result, type: "image", mime: file.type });
         renderFileBadges();
       };
       reader.readAsDataURL(file);
     } else {
       const reader = new FileReader();
       reader.onload = (e) => {
-        stagedFiles.push({ name: file.name, content: e.target.result, type: 'text' });
+        stagedFiles.push({ name: file.name, content: e.target.result, type: "text" });
         renderFileBadges();
       };
       reader.readAsText(file);
     }
   }
-  event.target.value = '';
+  event.target.value = "";
 }
 
 function renderFileBadges() {
-  const bar = document.getElementById('file-preview-bar');
-  bar.innerHTML = '';
+  const bar = document.getElementById("file-preview-bar");
+  bar.innerHTML = "";
   stagedFiles.forEach((file, index) => {
+    const icon = file.type === "image" ? "🖼" : "📄";
     bar.innerHTML += `
       <div class="file-badge">
-        📄 ${file.name}
+        ${icon} ${escapeHtml(file.name)}
         <span onclick="removeFile(${index})">×</span>
       </div>`;
   });
@@ -452,19 +853,9 @@ function removeFile(index) {
   renderFileBadges();
 }
 
-// ==================== CLEAR CHAT ====================
-function clearChat() {
-  if (!confirm('Clear the entire conversation?')) return;
-  const container = document.getElementById('chat-container');
-  container.innerHTML = `<div class="message ai">Welcome Admin. Jaguar AI is active and ready for HTML, CSS, JavaScript, and architecture execution.</div>`;
-  stagedFiles = [];
-  renderFileBadges();
-  document.getElementById('user-input').value = '';
-}
-
-// ==================== BETTER THINKING INDICATOR ====================
+// ---------- Thinking ----------
 const THINKING_STEPS = [
-  "Analyzing your request…",
+  "🐆 Jaguar is analyzing your request…",
   "Understanding context & files…",
   "Planning response structure…",
   "Generating content…",
@@ -477,7 +868,7 @@ function startThinking(aiDiv) {
   aiDiv.innerHTML = `<div class="thinking-status"><span class="thinking-dot"></span><span id="thinking-text">${THINKING_STEPS[0]}</span></div>`;
   thinkingInterval = setInterval(() => {
     step = (step + 1) % THINKING_STEPS.length;
-    const el = document.getElementById('thinking-text');
+    const el = document.getElementById("thinking-text");
     if (el) el.textContent = THINKING_STEPS[step];
   }, 1800);
 }
@@ -489,19 +880,25 @@ function stopThinking() {
   }
 }
 
-// ==================== CODE BLOCK RENDERER ====================
-function renderMarkdownWithCode(text) {
-  // Simple ```lang ... ``` detection
-  const parts = text.split(/(```[\s\S]*?```)/g);
-  let html = '';
+// ---------- Markdown / Code ----------
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
 
+function renderMarkdownWithCode(text) {
+  const parts = String(text).split(/(```[\s\S]*?```)/g);
+  let html = "";
   parts.forEach(part => {
-    if (part.startsWith('```')) {
+    if (part.startsWith("```")) {
       const match = part.match(/```(\w+)?\n?([\s\S]*?)```/);
       if (match) {
-        const lang = match[1] || 'code';
-        const code = match[2].replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        const id = 'code-' + Math.random().toString(36).slice(2, 9);
+        const lang = match[1] || "code";
+        const code = escapeHtml(match[2]);
+        const id = "code-" + Math.random().toString(36).slice(2, 9);
         html += `
           <div class="code-block">
             <div class="code-header">
@@ -514,10 +911,10 @@ function renderMarkdownWithCode(text) {
             <pre class="code-body" id="${id}">${code}</pre>
           </div>`;
       } else {
-        html += part.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        html += escapeHtml(part).replace(/\n/g, "<br>");
       }
     } else {
-      html += part.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+      html += escapeHtml(part).replace(/\n/g, "<br>");
     }
   });
   return html;
@@ -527,120 +924,246 @@ function copyCode(id) {
   const el = document.getElementById(id);
   if (!el) return;
   navigator.clipboard.writeText(el.textContent).then(() => {
-    const btn = el.closest('.code-block').querySelector('button');
+    const btn = el.closest(".code-block").querySelector("button");
     const original = btn.textContent;
-    btn.textContent = 'Copied!';
-    setTimeout(() => btn.textContent = original, 1500);
+    btn.textContent = "Copied!";
+    setTimeout(() => (btn.textContent = original), 1500);
   });
 }
 
 function downloadCode(id, lang) {
   const el = document.getElementById(id);
   if (!el) return;
-  const extMap = { html: 'html', css: 'css', javascript: 'js', js: 'js', python: 'py', json: 'json', typescript: 'ts', ts: 'ts' };
-  const ext = extMap[lang.toLowerCase()] || 'txt';
-  const blob = new Blob([el.textContent], { type: 'text/plain' });
-  const a = document.createElement('a');
+  const extMap = { html: "html", css: "css", javascript: "js", js: "js", python: "py", json: "json", typescript: "ts", ts: "ts" };
+  const ext = extMap[lang.toLowerCase()] || "txt";
+  const blob = new Blob([el.textContent], { type: "text/plain" });
+  const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = `jaguar-${Date.now()}.${ext}`;
   a.click();
   URL.revokeObjectURL(a.href);
 }
 
-// ==================== EDIT & RESEND ====================
-function editMessage(btn) {
-  const userDiv = btn.closest('.message.user');
-  const text = userDiv.dataset.rawText || userDiv.innerText;
-  document.getElementById('user-input').value = text;
-  document.getElementById('user-input').focus();
-  // Optional: remove the old user + AI messages after this one if you want
+// ---------- Send / Stop ----------
+function setProcessing(on) {
+  isProcessing = on;
+  const btn = document.getElementById("send-btn");
+  if (on) {
+    btn.classList.add("stop-mode");
+    btn.textContent = "Stop 🛑";
+    btn.disabled = false;
+  } else {
+    btn.classList.remove("stop-mode");
+    btn.textContent = "Run Request";
+    btn.disabled = false;
+  }
 }
 
-// ==================== SEND MESSAGE ====================
+function onSendClick() {
+  if (isProcessing) {
+    // Stop
+    if (currentAbort) {
+      currentAbort.abort();
+      currentAbort = null;
+    }
+    stopThinking();
+    setProcessing(false);
+    const container = document.getElementById("chat-container");
+    const last = container.querySelector(".message.ai:last-child");
+    if (last && last.querySelector(".thinking-status")) {
+      last.innerHTML = "⏹ Request stopped by you.";
+    }
+    return;
+  }
+  sendMessage();
+}
+
 async function sendMessage(overrideModel = null) {
-  const input = document.getElementById('user-input');
+  const input = document.getElementById("user-input");
   const text = input.value.trim();
   if (!text && stagedFiles.length === 0) return;
 
-  const chatContainer = document.getElementById('chat-container');
-  const selectedModel = overrideModel || document.getElementById('model-select').value;
+  const chat = getActiveChat();
+  if (!chat) return;
 
-  // Render User Message with Edit button
+  const selectedModel = overrideModel || document.getElementById("model-select").value;
+  const container = document.getElementById("chat-container");
+
+  // Build user message record
+  const userMsg = {
+    role: "user",
+    content: text,
+    attachments: stagedFiles.map(f => ({ name: f.name, type: f.type })),
+    timestamp: Date.now()
+  };
+
+  // Render user bubble
   if (!overrideModel) {
-    let displayContent = text;
-    if (stagedFiles.length > 0) {
-      displayContent += `\n\n[Attached Files: ${stagedFiles.map(f => f.name).join(', ')}]`;
-    }
-    const userDiv = document.createElement('div');
-    userDiv.className = 'message user';
+    const userDiv = document.createElement("div");
+    userDiv.className = "message user";
     userDiv.dataset.rawText = text;
-    userDiv.innerHTML = `${displayContent.replace(/</g,'&lt;').replace(/>/g,'&gt;')}<button class="edit-btn" onclick="editMessage(this)">Edit</button>`;
-    chatContainer.appendChild(userDiv);
+    userDiv.onclick = (e) => showMsgActions(e, userDiv);
+    let display = escapeHtml(text);
+    if (stagedFiles.length > 0) {
+      display += `\n\n[Attached: ${stagedFiles.map(f => f.name).join(", ")}]`;
+    }
+    userDiv.innerHTML = display + `<div class="msg-actions"><button onclick="editFromMsg(event, this)">Edit</button><button onclick="copyFromMsg(event, this)">Copy</button></div>`;
+    container.appendChild(userDiv);
   }
 
-  // Compile prompt
-  let fullPrompt = text;
-  stagedFiles.forEach(f => {
-    if (f.type === 'text') fullPrompt += `\n\n--- File: ${f.name} ---\n${f.content}`;
+  // Prepare multimodal content for API
+  const contentParts = [];
+  if (text) contentParts.push({ type: "text", text: text });
+
+  // Append text files into the text part
+  stagedFiles.filter(f => f.type === "text").forEach(f => {
+    contentParts.push({
+      type: "text",
+      text: `\n\n--- File: ${f.name} ---\n${f.content}`
+    });
   });
 
-  input.value = '';
+  // Images as vision parts
+  stagedFiles.filter(f => f.type === "image").forEach(f => {
+    contentParts.push({
+      type: "image_url",
+      image_url: { url: f.content }
+    });
+  });
+
+  // If only images and no text, add a default instruction
+  if (contentParts.every(p => p.type !== "text" || !p.text?.trim())) {
+    contentParts.unshift({ type: "text", text: "Please describe and analyze the attached image(s) in detail." });
+  }
+
+  // Build history messages for the API (last N turns to stay within limits)
+  const historyForApi = [];
+  const prior = chat.messages.slice(-12); // keep recent context
+  prior.forEach(m => {
+    if (m.role === "user" || m.role === "assistant") {
+      historyForApi.push({ role: m.role === "assistant" ? "assistant" : "user", content: m.content });
+    }
+  });
+
+  // Current turn (multimodal if images present)
+  const hasImages = stagedFiles.some(f => f.type === "image");
+  if (hasImages) {
+    historyForApi.push({ role: "user", content: contentParts });
+  } else {
+    const fullText = contentParts.filter(p => p.type === "text").map(p => p.text).join("");
+    historyForApi.push({ role: "user", content: fullText });
+  }
+
+  // Persist user message
+  if (!overrideModel) {
+    chat.messages.push(userMsg);
+    if (chat.title === "New Chat" || !chat.title) {
+      chat.title = autoTitleFromText(text || (stagedFiles[0]?.name || "Image chat"));
+    }
+    chat.updated = Date.now();
+    saveChats();
+    renderChatList();
+  }
+
+  input.value = "";
+  const filesSnapshot = [...stagedFiles];
   stagedFiles = [];
   renderFileBadges();
 
-  // Thinking state
-  const aiDiv = document.createElement('div');
-  aiDiv.className = 'message ai';
-  chatContainer.appendChild(aiDiv);
-  chatContainer.scrollTop = chatContainer.scrollHeight;
+  // Thinking UI
+  const aiDiv = document.createElement("div");
+  aiDiv.className = "message ai";
+  container.appendChild(aiDiv);
+  container.scrollTop = container.scrollHeight;
   startThinking(aiDiv);
+  setProcessing(true);
+
+  currentAbort = new AbortController();
 
   try {
-    const response = await fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: selectedModel, prompt: fullPrompt })
+    const response = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: selectedModel,
+        messages: historyForApi
+      }),
+      signal: currentAbort.signal
     });
 
     let data;
-    try { data = await response.json(); }
-    catch { throw new Error(`Server returned non-JSON (status ${response.status})`); }
+    try {
+      data = await response.json();
+    } catch {
+      throw new Error(`Server returned non-JSON (status ${response.status})`);
+    }
 
     stopThinking();
 
     if (!response.ok) {
-      pendingRequest = { prompt: fullPrompt };
+      pendingRequest = { messages: historyForApi };
       aiDiv.remove();
-      showFallbackModal(selectedModel, "inclusionai/ling-3.0-tiny-free");
+      showFallbackModal(selectedModel, "inclusionai/ling-3.0-flash-fin");
+      setProcessing(false);
       return;
     }
 
     const result = data.result || data.error || "Execution completed.";
     aiDiv.innerHTML = renderMarkdownWithCode(result);
+
+    // Save assistant message
+    chat.messages.push({
+      role: "assistant",
+      content: result,
+      timestamp: Date.now()
+    });
+    chat.updated = Date.now();
+    saveChats();
   } catch (err) {
     stopThinking();
-    aiDiv.innerText = `Error: ${err.message || "Could not reach the serverless worker."}`;
-    console.error(err);
+    if (err.name === "AbortError") {
+      aiDiv.innerText = "⏹ Request stopped by you.";
+    } else {
+      aiDiv.innerText = `Error: ${err.message || "Could not reach the serverless worker."}`;
+      console.error(err);
+    }
+  } finally {
+    setProcessing(false);
+    currentAbort = null;
+    container.scrollTop = container.scrollHeight;
   }
-
-  chatContainer.scrollTop = chatContainer.scrollHeight;
 }
 
-// ==================== FALLBACK ====================
+// ---------- Fallback ----------
 function showFallbackModal(failedModel, fallbackModel) {
-  document.getElementById('fallback-text').innerText =
+  document.getElementById("fallback-text").innerText =
     `The requested model (${failedModel}) is currently unavailable or busy. Switch to ${fallbackModel}?`;
-  document.getElementById('fallback-modal').style.display = 'flex';
+  document.getElementById("fallback-modal").style.display = "flex";
 }
 
 function acceptFallback(confirmed) {
-  document.getElementById('fallback-modal').style.display = 'none';
+  document.getElementById("fallback-modal").style.display = "none";
   if (confirmed && pendingRequest) {
-    document.getElementById('model-select').value = "inclusionai/ling-3.0-tiny-free";
-    sendMessage("inclusionai/ling-3.0-tiny-free");
+    document.getElementById("model-select").value = "inclusionai/ling-3.0-flash-fin";
+    // Re-send using the stored messages
+    const chat = getActiveChat();
+    // Simple path: just call send again with override (user already sees the last user msg)
+    sendMessage("inclusionai/ling-3.0-flash-fin");
   }
   pendingRequest = null;
 }
+
+// ---------- Init ----------
+checkAccessOnLoad();
+loadChats();
+
+// Enter to send (Shift+Enter for newline)
+document.getElementById("user-input").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    if (!isProcessing) onSendClick();
+  }
+});
 </script>
 </body>
 </html>
